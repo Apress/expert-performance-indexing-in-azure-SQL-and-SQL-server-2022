@@ -1,0 +1,95 @@
+--Listing 6-1. Drop the existing Primary XML index on [Sales].[Store]
+USE AdventureWorks2017;
+GO
+
+DROP INDEX IF EXISTS [PXML_Store_Demographics] ON [Sales].[Store]
+
+--Listing 6-2. Query on [Sales].[Store] for AnnualSales
+USE AdventureWorks2017;
+GO
+
+WITH XMLNAMESPACES
+(DEFAULT 'http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/StoreSurvey')
+SELECT BusinessEntityID, Name, Demographics
+FROM [Sales].[Store]
+WHERE Demographics.exist('/StoreSurvey/AnnualSales[.=1500000]') = 1;
+
+--Listing 6-3. Primary XML index on [Sales].[Store]
+USE AdventureWorks2017;
+GO
+
+CREATE PRIMARY XML INDEX [PXML_Store_Demographics] ON [Sales].[Store]
+([Demographics])
+
+--Listing 6-4. Primary XML index on [Sales].[Store]
+USE AdventureWorks2017;
+GO
+
+SELECT [i].[name]
+      ,[i].[index_id]
+      ,[IPS].[index_level]
+      ,[IPS].[index_type_desc]
+      ,[IPS].[fragment_count]
+      ,[IPS].[avg_page_space_used_in_percent]
+      ,[IPS].[record_count]
+      ,[IPS].[page_count]
+FROM [sys].[dm_db_index_physical_stats](DB_ID(N'AdventureWorks2017'), OBJECT_ID(N'Sales.Store'), NULL, NULL, 'DETAILED') AS [IPS]
+    INNER JOIN [sys].[indexes] AS [i]
+        ON [i].[object_id] = [IPS].[object_id]
+           AND [i].[index_id] = [IPS].[index_id]
+WHERE [IPS].[index_type_desc] <> 'NONCLUSTERED INDEX'
+ORDER BY [i].[index_id]
+        ,[IPS].[index_level];
+
+--Listing 6-5. Creating a Secondary Index
+USE AdventureWorks2017;
+GO
+
+CREATE XML INDEX [SXML_Store_Demographics] ON [Sales].[Store] (Demographics)
+USING XML INDEX [PXML_Store_Demographics]
+FOR PATH;
+
+--Listing 6-5. Script for Creating a Selective XML Index
+CREATE SELECTIVE XML INDEX [SEL_XML_Store_Demographics_AnnualSales]
+ON [Sales].[Store] (Demographics)
+WITH XMLNAMESPACES
+(DEFAULT 'http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/StoreSurvey')
+FOR (AnnualSales = '/StoreSurvey/AnnualSales');
+
+--Listing 6-6. Query on [Sales].[Store] for AnnualSales and BusinessType
+USE AdventureWorks2017;
+GO
+
+DROP INDEX IF EXISTS [SXML_Store_Demographics] ON [Sales].[Store];
+DROP INDEX IF EXISTS [PXML_Store_Demographics] ON [Sales].[Store];
+WITH XMLNAMESPACES
+(DEFAULT 'http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/StoreSurvey')
+SELECT BusinessEntityID, Demographics
+FROM [Sales].[Store]
+WHERE Demographics.exist('/StoreSurvey/AnnualSales[.=1500000]') = 1
+AND Demographics.exist('/StoreSurvey/BusinessType[.="OS"]') = 1
+
+--Listing 6-7. Script for Creating a Selective XML Index
+USE AdventureWorks2017;
+GO
+
+DROP INDEX IF EXISTS [SEL_XML_Store_Demographics_AnnualSales] ON [Sales].[Store];
+CREATE SELECTIVE XML INDEX [SEL_XML_Store_Demographics_AnnualSalesBusinessType]
+ON [Sales].[Store] (Demographics)
+WITH XMLNAMESPACES
+(DEFAULT 'http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/StoreSurvey')
+FOR (
+AnnualSales = '/StoreSurvey/AnnualSales',
+BusinessType = '/StoreSurvey/BusinessType');
+
+Listing 6-8. Script for Creating a Selective XML Index
+USE AdventureWorks2017;
+GO
+
+DROP INDEX IF EXISTS [SEL_XML_Store_Demographics_AnnualSales] ON [Sales].[Store];
+CREATE SELECTIVE XML INDEX [SEL_XML_Store_Demographics_AnnualSalesBusinessType]
+ON [Sales].[Store] (Demographics)
+WITH XMLNAMESPACES
+(DEFAULT 'http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/StoreSurvey')
+FOR (AnnualSales = '/StoreSurvey/AnnualSales',
+BusinessType = '/StoreSurvey/BusinessType');
